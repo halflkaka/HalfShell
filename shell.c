@@ -15,10 +15,25 @@
 
 int indice = 0;
 
+typedef struct Command {
+	char* text;
+	int count;
+} Command;
+
+Command* createCommand(char* line, int i) {
+	Command* command = (Command*)malloc(sizeof(Command));
+	if (!command) {
+		fprintf(stderr, "error: %s\n", strerror(errno));
+	}
+	command->count = i;
+	command->text = line;
+	return command;
+}
+
 typedef struct Queue {
 	int peek, rear;
 	int size, capacity;
-	char** commandHistroy;
+	Command** commandHistroy;
 } Queue;
 
 Queue* createQueue() {
@@ -27,7 +42,7 @@ Queue* createQueue() {
 	queue->peek = 0;
 	queue->rear = MAX_HISTORY - 1;
 	queue->capacity = MAX_HISTORY;
-	queue->commandHistroy = (char**)malloc(sizeof(char*) * MAX_HISTORY);
+	queue->commandHistroy = (Command**)malloc(sizeof(Command*) * MAX_HISTORY);
 	if (!queue->commandHistroy) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 	}
@@ -42,37 +57,40 @@ int isEmpty(Queue* history) {
 	return (history->size == 0);
 }
 
-char* deque(Queue* history) {
-	char* command = history->commandHistroy[history->peek];
+Command* deque(Queue* history) {
+	Command* command = history->commandHistroy[history->peek];
 	history->peek = (history->peek + 1) % (history->capacity);
 	history->size = history->size - 1;
 	return command;
 }
 
-void enqueue(Queue* history, char* command) {
+void enqueue(Queue* history, Command* command) {
 	if (isFull(history)) {
 		deque(history);
 	}
 	history->rear = (history->rear + 1) % (history->capacity);
 	history->commandHistroy[history->rear] = command;
 	history->size = history->size + 1;
-	// printf("%s is enqued, peek is %d, rear is %d\n", command, history->peek, history->rear);
 }
 
-void printHistory(Queue* history) {
-	// int index = 0;
-	for (int i = history->peek; i <= history->rear; i++) {
-		printf("%d %s\n", indice, history->commandHistroy[i]);
-		indice++;
+void printHistory(Queue* history, long limit) {
+	if (limit >= history->size) {
+		for (int i = history->peek; i <= history->rear; i++) {
+			printf("%d %s\n", history->commandHistroy[i]->count, history->commandHistroy[i]->text);
+		}
+	} else {
+		for (int i = history->peek; i < history->peek + limit; i++) {
+			printf("%d %s\n", history->commandHistroy[i]->count, history->commandHistroy[i]->text);
+		}
 	}
+	
 }
 
 void clearHistory(Queue* history) {
 	history->size = 0;
 	history->peek = 0;
 	history->rear = history->capacity - 1;
-	memset(history->commandHistroy, 0, sizeof(char*));
-	indice++;
+	memset(history->commandHistroy, 0, sizeof(Command*));
 }
 
 void promptWithInfo() 
@@ -127,7 +145,11 @@ char* readCommand(Queue* history) {
 
 	getline(&input, &maxBufferSize, stdin);
 	input[strlen(input)-1] = '\0';
-	enqueue(history, strdup(input));
+
+	Command* command = createCommand(strdup(input), indice);
+	indice++;
+
+	enqueue(history, command);
 	return input;
 }
 
@@ -189,12 +211,34 @@ int builtin_cd(char* path) {
 }
 
 int builtin_history(Queue* history, char** args) {
-	if (args[1] != NULL && strcmp(args[1], "-c") == 0) {
+	char* status;
+	if (args[1] != NULL && strcmp(args[1], "-c") == 0) { //history -c
 		clearHistory(history);
 		return 1;
+	} else if (args[1] != NULL && strtol(args[1], &status, 10)) { //history [number]
+		long limit = strtol(args[1], &status, 10);
+		printHistory(history, limit);
+		return 1;
+	} else if (args[1] != NULL) {
+		fprintf(stderr, "error: %s\n", strerror(errno));
+		return 1;
+	} else {
+		printHistory(history, history->size);
 	}
-	printHistory(history);
 	return 1;
+}
+
+int wrapper(char** command, Queue* history);
+
+int execute_history(Queue* history, char** args){
+	if (args[1] != NULL) {
+		fprintf(stderr, "error: %s\n", strerror(errno));
+		return 1;
+	}
+	history->commandHistroy[history->rear]->text = history->commandHistroy[history->rear-1]->text;
+	char* line = history->commandHistroy[history->rear]->text;
+
+	return wrapper(parseCommand(line), history);
 }
 
 int wrapper(char** args, Queue* history) {
@@ -210,6 +254,10 @@ int wrapper(char** args, Queue* history) {
 	if (strcmp(args[0], "history") == 0) {
 		return builtin_history(history, args);
 	}
+	if (args[0][0] == '!') {
+		return execute_history(history, args);
+	}
+	
 	return execute(args);
 }
 
