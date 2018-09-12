@@ -151,7 +151,6 @@ char** parseCommand(char* input) {
 	}
 	arguments[pos] = NULL;
 
-	free(input);
 	return arguments;
 }
 
@@ -163,10 +162,12 @@ int execute(char** args) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		return 0;
 	} else if (pid == 0) {
-		if (execve(args[0], args, NULL) == -1) {
+		int status = execve(args[0], args, NULL);
+		if (status == -1) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
 			_exit(EXIT_FAILURE);
 		}
+		exit(1);
 	} else {
 		int status;
 		waitpid(pid, &status, 0);
@@ -225,6 +226,7 @@ int main() {
 		args = parseCommand(command);
 		status = wrapper(args, history);
 		
+		free(command);
 		free(args);
 	} while (status);
 	
