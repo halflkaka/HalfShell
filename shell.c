@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <pwd.h>
 #include <assert.h>
 #include <errno.h>
@@ -230,15 +232,48 @@ int builtin_history(Queue* history, char** args) {
 
 int wrapper(char** command, Queue* history);
 
-int execute_history(Queue* history, char** args){
+int match(char* s, char* target) {
+	if (strlen(s) > strlen(target)) {
+		return 0;
+	}
+	int i;
+	for (i = 0; i < strlen(s); i++) {
+		if (s[i] != target[i]) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int execute_history(Queue* history, char** args) {
 	if (args[1] != NULL) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		return 1;
 	}
-	history->commandHistroy[history->rear]->text = history->commandHistroy[history->rear-1]->text;
-	char* line = history->commandHistroy[history->rear]->text;
-
-	return wrapper(parseCommand(line), history);
+	if (strlen(args[0]) == 2 && args[0][1] == '!') { //!!
+		history->commandHistroy[history->rear]->text = history->commandHistroy[history->rear-1]->text;
+		char* line = history->commandHistroy[history->rear]->text;
+		return wrapper(parseCommand(strdup(line)), history);
+	} else {										//!his
+		int i;
+		char* copy = (char*)malloc(sizeof(char) * (strlen(args[0])-1));
+		if (!copy) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+		}
+		for (i = 1; i < strlen(args[0]); i++) {
+			copy[i-1] = args[0][i];
+		}
+		for (i = history->rear; i >= history->peek; i--) {
+			if (match(copy, history->commandHistroy[i]->text)) {
+				history->commandHistroy[history->rear]->text = history->commandHistroy[i]->text;
+				return wrapper(parseCommand(strdup(history->commandHistroy[i]->text)), history);
+			}
+		}
+		fprintf(stderr, "error: none of the history command starts with %s \n", copy);
+		free(copy);
+		return 1;
+	}
+	
 }
 
 int wrapper(char** args, Queue* history) {
