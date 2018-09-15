@@ -14,24 +14,24 @@
 4. history -c clears the entire history, removing all entries.  
 5. `!!` executes the most recent command in history.  
 6. `!string` executes the most recent command in history starting with string.  
-`$cd /home/w4118  
-$/bin/ls  
-my_file.txt  
-$history  
-0 cd /home/w4118  
-1 /bin/ls  
-2 history  
-$!/  
-my_file.txt  
-$!his  
-0 cd /home/w4118  
-1 /bin/ls  
-2 history  
-3 /bin/ls  
-4 history  
-$history -c  
-$history  
-6 history  
-$`  
+`$cd /home/w4118`    
+`$/bin/ls`  
+`my_file.txt`  
+`$history`  
+`0 cd /home/w4118`  
+`1 /bin/ls`  
+`2 history`  
+`$!/`  
+`my_file.txt`  
+`$!his`  
+`0 cd /home/w4118`  
+`1 /bin/ls`  
+`2 history`  
+`3 /bin/ls`  
+`4 history`  
+`$history -c`  
+`$history`  
+`6 history`  
+`$`  
 ## 说明
 OS的HW1，最后还是选了分布式，还剩下pipe功能没写，下学期选了的话再写吧。。。。。。
